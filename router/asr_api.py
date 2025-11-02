@@ -1,19 +1,109 @@
-import time
-import wave
-import os
+# -*- coding: utf-8 -*-
+""" 
+@author: catherine wei
+@contact: EMAIL@contact: catherine@oddmeta.com
+@software: PyCharm 
+@file: odd_asr.py 
+@info: 消息模版
+"""
 
-from flask import Blueprint, render_template, request, session, send_file, jsonify
+import os
+import uuid
+import wave
+
+from flask import Blueprint, request, jsonify
+from mutagen.mp3 import MP3
 
 # import app
 from log import logger
-from odd_asr_app import find_free_odd_asr_file
+from odd_asr_instance import find_free_odd_asr_file, find_free_odd_asr_sentence
+from scheduled_task import scheduled_task
+from odd_asr_file import OddAsrFile
+from odd_asr_sentence import OddAsrSentence
 
 ########################################
 ## main
 ########################################
 bp = Blueprint('asr', __name__, url_prefix='')
 
-@bp.route('/v1/asr', methods=['POST'])
+@bp.route('/v1/asr/sentence', methods=['POST'])
+def transcribe_sentence():
+    """
+    Receive an audio file from the client and return the transcribed text.
+    """
+    return_ok = True
+    try:
+
+        # Get the uploaded audio file
+        audio_file = request.files.get('audio')
+        if not audio_file:
+            return jsonify({"error": "Invalid parameter. audio param is required."}), 400
+        
+        # get mode from request if provided
+        mode = request.form.get('mode', "file")  # mode should be a string like 'file', 'stream', 'pipeline'
+        output_format = request.form.get('output_format', "txt")  # output_format should be a string like 'txt', 'srt', 'spk'
+        hotwords = request.form.get('hotwords', "")  # hotwords should be a string like 'word1 word2'
+
+        # Create a temporary directory with proper permissions
+        import tempfile
+        temp_dir = tempfile.gettempdir()
+        temp_path = os.path.join(temp_dir, f"temp_audio_{os.urandom(8).hex()}.wav")
+
+        # Save the audio file to a temporary location
+        try:
+            audio_file.save(temp_path)
+            logger.info(f"Received audio and saved to: {temp_path}")
+        except Exception as e:
+            logger.error(f"Failed to save audio file: {e}")
+            return jsonify({"error": f"Failed to save audio file: {str(e)}"}), 500
+
+        # find a odd_asr_file instance
+        odd_asr_sentence: OddAsrSentence = find_free_odd_asr_sentence()
+        
+        if not odd_asr_sentence:
+            # Clean up the temporary file
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+            return_ok = False
+            result = "no available asr instance."
+            return jsonify({"error": result}), 500
+
+        # recognition with hotwords
+        try:
+            match mode:
+                case "file":
+                    result = odd_asr_sentence.transcribe_sentence(audio_file=temp_path, hotwords=hotwords, output_format=output_format)
+                case _:
+                    return_ok = False
+                    result = f"unsupported mode: {mode}."
+        except Exception as e:
+            logger.error(f"ASR processing error: {e}")
+            result = f"ASR processing error: {str(e)}"
+            return_ok = False
+        finally:
+            # Delete the temporary file
+            if os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                    logger.info(f"Deleted temporary file: {temp_path}")
+                except Exception as e:
+                    logger.warning(f"Failed to delete temporary file: {e}")
+
+        logger.info(f"Recognized mode:{mode}, fmt={output_format}, result: {result[:100]}...")
+
+        # Return the recognition result
+        if not return_ok:
+            return jsonify({"error": result}), 500
+        else:
+            return jsonify({"text": result}), 200
+
+    except Exception as e:
+        logger.error(f"Unexpected error in transcribe endpoint: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({"error": str(e)}), 500
+
+@bp.route('/v1/asr/file', methods=['POST'])
 def transcribe():
     """
     Receive an audio file from the client and return the transcribed text.
@@ -31,33 +121,52 @@ def transcribe():
         output_format = request.form.get('output_format', "txt")  # output_format should be a string like 'txt', 'srt', 'spk'
         hotwords = request.form.get('hotwords', "")  # hotwords should be a string like 'word1 word2'
 
-        # Save the audio file to a temporary location
-        temp_path = "temp_audio.wav"
-        audio_file.save(temp_path)
+        # Create a temporary directory with proper permissions
+        import tempfile
+        temp_dir = tempfile.gettempdir()
+        temp_path = os.path.join(temp_dir, f"temp_audio_{os.urandom(8).hex()}.wav")
 
-        logger.info(f"Received audio and saved to: {temp_path}")
+        # Save the audio file to a temporary location
+        try:
+            audio_file.save(temp_path)
+            logger.info(f"Received audio and saved to: {temp_path}")
+        except Exception as e:
+            logger.error(f"Failed to save audio file: {e}")
+            return jsonify({"error": f"Failed to save audio file: {str(e)}"}), 500
 
         # find a odd_asr_file instance
-        odd_asr_file = find_free_odd_asr_file()
+        odd_asr_file: OddAsrFile = find_free_odd_asr_file()
         
         if not odd_asr_file:
+            # Clean up the temporary file
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
             return_ok = False
             result = "no available asr instance."
+            return jsonify({"error": result}), 500
 
         # recognition with hotwords
-        match mode:
-            case "file":
-                result = odd_asr_file.transcribe_file(audio_file=temp_path, hotwords=hotwords, output_format=output_format)
-            case _:
-                return_ok = False
-                result = f"unsupported mode: {mode}."
-        
-        logger.info(f"Recognized mode:{mode}, fmt={output_format}, result: {result}")
+        try:
+            match mode:
+                case "file":
+                    result = odd_asr_file.transcribe_file(audio_file=temp_path, hotwords=hotwords, output_format=output_format)
+                case _:
+                    return_ok = False
+                    result = f"unsupported mode: {mode}."
+        except Exception as e:
+            logger.error(f"ASR processing error: {e}")
+            result = f"ASR processing error: {str(e)}"
+            return_ok = False
+        finally:
+            # Delete the temporary file
+            if os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                    logger.info(f"Deleted temporary file: {temp_path}")
+                except Exception as e:
+                    logger.warning(f"Failed to delete temporary file: {e}")
 
-        # Delete the temporary file
-        os.remove(temp_path)
-
-        logger.info(f"Deleted temporary file: {temp_path}")
+        logger.info(f"Recognized mode:{mode}, fmt={output_format}, result: {result[:100]}...")
 
         # Return the recognition result
         if not return_ok:
@@ -66,12 +175,95 @@ def transcribe():
             return jsonify({"text": result}), 200
 
     except Exception as e:
+        logger.error(f"Unexpected error in transcribe endpoint: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
 
-@bp.route('/api/v3/file/upload', methods=['POST'])
+@bp.route('/v1/asr/file/upload', methods=['POST'])
 def file_upload():
     return jsonify({"text": "OK"}), 200
 
+@bp.route('/v1/asr/task/delete', methods=['POST'])
+def asr_recorder_delete_task():
+    return jsonify({"text": "OK"}), 200
+
+@bp.route('/v1/asr/task/create', methods=['POST'])
+def asr_task_create():
+    file = request.files.get('file')
+    file_content = file.read()
+    size = len(file_content)
+    # check
+    if size > 512 * 1024 * 1024:
+        return {'error_code': -2, 'error_desc': 'file size > 512m', 'data': {'task_id': ""}}
+    hot_uid = ''
+    sensitive_uid = ''
+    if request.form.get('hot_uid', None):
+        hot_uid = str(request.form['hot_uid'])
+
+    if request.form.get('sensitive_uid', None):
+        sensitive_uid = str(request.form['sensitive_uid'])
+
+    unique_id = hot_uid + ";" + sensitive_uid
+
+    priority = request.form['priority']
+    if not all([file]):
+        return {'error_code': -1, 'error_desc': 'params is null', 'data': {'task_id': ''}}
+    logger.info("create task unique_id: " + str(unique_id) + " filename: " + str(file.filename))
+    file_uuid = uuid.uuid1()
+    file_path = "tmp/" + str(file_uuid) + "_" + str(file.filename)
+    try:
+        with open(file_path, "wb+") as f:
+            f.write(file_content)
+            f.close()
+    except:
+        logger.info("file error")
+        return {'error_code': -3, 'error_desc': 'server can not create the file', 'data': {'task_id': ""}}
+
+    # 采样率
+    frame_rate = 0
+    # 几通道
+    channel = 2
+
+    # 判断文件格式
+    try:
+        song = wave.open(file_path)
+        frame_rate = song.getframerate()
+        channel = song.getnchannels()
+        is_type_ok = True
+    except:
+        is_type_ok = False
+
+    if not is_type_ok:
+        try:
+            song = MP3(file_path)
+            frame_rate = song.info.sample_rate
+            channel = song.info.channels
+            is_type_ok = True
+        except:
+            is_type_ok = False
+
+    if not is_type_ok:
+        return {'error_code': -2, 'error_desc': '必须是mp3或者wav', 'data': {'task_id': ""}}
+
+    # 判断采样率
+    if frame_rate not in (8000, 16000):
+        return {'error_code': -2, 'error_desc': '采样率必须是8000或者16000HZ', 'data': {'task_id': ""}}
+    # 判断几通道
+    if channel != 1:
+        return {'error_code': -2, 'error_desc': '必须是单通道', 'data': {'task_id': ""}}
+
+    task_id = scheduled_task.start_task(priority, unique_id, file_path)
+    if task_id is not None:
+        scheduled_task.is_transmit = True
+        return {'error_code': 0, 'error_desc': 'ok', 'data': {'task_id': task_id}}
+    return {'error_code': -2, 'error_desc': 'create task fail', 'data': {'task_id': ""}}
+@bp.route('/v1/asr/task/status', methods=['POST'])
+def asr_task_status():
+    return jsonify({"text": "OK"}), 200
+@bp.route('/v1/asr/task/cancel', methods=['POST'])
+def asr_task_cancel():
+    return jsonify({"text": "OK"}), 200
 
 @bp.route('/update_transmit', methods=['POST'])
 def update_transmit():
@@ -533,4 +725,3 @@ def delete_vocab(vocab_id):
     }
 
     return jsonify(j), 200
-

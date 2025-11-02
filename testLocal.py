@@ -1,15 +1,15 @@
 import os
-from odd_asr import OddASR
+from odd_asr_file import OddAsrFile
 from pynput import keyboard
 
-sound_to_text = OddASR()
+asr = OddAsrFile()
 
 def on_press(key):
     try:
         # 检测空格键
         if key == keyboard.Key.space:
             print("Space pressed. Starting recognition...")
-            result = sound_to_text.recognize("./test_cn_male_9s.wav")
+            result = asr.transcribe_file("./test_cn_male_9s.wav")
             print(f"Recognition Result:\n{result}")
         # 检测退出键 'q'
         elif key.char == 'q':

@@ -11,10 +11,13 @@ import argparse
 import threading;
 import asyncio
 
-from odd_asr_app import init_instance_file, app
-from odd_wss_server import init_instances_stream, start_wss_server
-from log import logger
+from odd_asr_app import app
+from odd_asr_instance import init_instance_file, init_instance_sentence
 
+from odd_wss_server import init_instances_stream, start_wss_server
+from scheduled_task import scheduled_task
+
+from log import logger
 import odd_asr_config as config
 
 if __name__ == '__main__':
@@ -36,14 +39,20 @@ if __name__ == '__main__':
     else:
         logger.info("WebSocket server disabled.")
 
-    # Start Flask server with HTTPS support
+    # init file/sentence ASR instances
     init_instance_file()
+    init_instance_sentence()
+
+    # Start Flask server with HTTPS support
     logger.info(f"Starting server on {'https' if config.odd_asr_cfg['enable_https'] else 'http'}://{config.HOST}:{config.PORT}")
     if config.odd_asr_cfg["enable_https"]:
         ssl_context = (config.odd_asr_cfg["ssl_cert_path"], config.odd_asr_cfg["ssl_key_path"])
         app.run(host=config.HOST, port=config.PORT, ssl_context=ssl_context, debug=config.Debug)
     else:
         app.run(host=config.HOST, port=config.PORT, debug=config.Debug)
+
+    # Start scheduled task thread
+    scheduled_task.start()
 
     # Start Flask server and listen for requests from any host
     # print(app.url_map)

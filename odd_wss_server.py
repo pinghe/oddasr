@@ -36,7 +36,6 @@ server --> client: ASRResult
 
 
 odd_asr_stream_set = set()
-# odd_asr_stream_dict = dict()
 _wss_server = None
 
 def find_free_odd_asr_stream(websocket, task_id):
@@ -67,6 +66,16 @@ def find_odd_asr_stream_by_websocket(websocket):
         
     return None
 
+def free_odd_asr_stream(odd_asr_stream):
+    '''
+    释放一个odd_asr_stream
+    :param odd_asr_stream:
+    :return:
+    '''
+    odd_asr_stream.set_busy(False)
+    odd_asr_stream.set_session_id(None)
+    odd_asr_stream.set_websocket(None)
+
 def find_odd_asr_stream_by_session_id(task_id):
     '''
     找到一个已存在的odd_asr_stream
@@ -90,11 +99,6 @@ class OddWssServer:
         websocket = args[0]
         logger.debug(f"Client connected: {websocket}, args={args}, len={len(args)}, kwargs={kwargs}")
         
-        # # 检查路径是否匹配
-        # if path != '/v1/asr':
-        #     print(f"Invalid path: {path}")
-        #     await websocket.close()
-        #     return
         try:
             async for message in websocket:
                 if not websocket in self._clients_set:
@@ -140,7 +144,13 @@ class OddWssServer:
                     '''
                     客户端已经申请过ASR，并且已经连接上了，此时收到的消息是PCMData
                     '''
-                    self.onRecv(websocket, message)
+                    if type(message) is bytes:
+                        self.onRecv(websocket, message)
+                    else:
+                        # {'service_type':'ASR','msg_type':'STOP_SESSION_REQ'}
+                        self.doCtrl(websocket, message)
+                        logger.error(f"invalid message type, {type(message)}, {message}")
+
                     continue
 
         finally:
@@ -172,14 +182,14 @@ class OddWssServer:
             await client.send(message)
 
     def onRecv(self, websocket, pcm_data):
-        logger.debug(f"onRecv: {len(pcm_data)}, websocket={websocket}")
+        # logger.debug(f"onRecv: {len(pcm_data)}, websocket={websocket}")
 
         # 找到对应的odd_asr_stream
         task_id = ""
         odd_asr_stream: OddAsrStream = find_odd_asr_stream_by_websocket(websocket=websocket)
         if odd_asr_stream:
             task_id = odd_asr_stream.get_session_id()
-            logger.debug(f"find_odd_asr_stream_by_websocket, task_id={task_id}")
+            # logger.debug(f"find_odd_asr_stream_by_websocket, task_id={task_id}")
             odd_asr_stream.transcribe_stream(pcm_data, socket=websocket, task_id=task_id)
         else:
             logger.error(f"find_odd_asr_stream_by_websocket, not found, websocket={websocket}")
@@ -194,18 +204,18 @@ class OddWssServer:
             '''
             task_id = self._conn_sessionid[websocket]
 
-            self._sessionid_set.remove(task_id)
+            # self._sessionid_set.remove(task_id)
             self._sessionid_conn.pop(task_id)
             self._conn_sessionid.pop(websocket)
             self._clients_set.remove(websocket)
             odd_asr_stream = find_odd_asr_stream_by_session_id(task_id=task_id)
 
-            logger.warn(f"remove task_id={task_id}, client={websocket}, odd_asr_stream={odd_asr_stream}")
+            # logger.warn(f"remove task_id={task_id}, client={websocket}, odd_asr_stream={odd_asr_stream}")
 
             if odd_asr_stream:
                 odd_asr_stream.set_websocket(None)
                 odd_asr_stream.set_busy(False)
-                odd_asr_stream.set_session_id('')
+                # odd_asr_stream.set_session_id('')
 
             logger.warn(f"remove task_id={task_id}, client={websocket}")
         else:
@@ -278,6 +288,63 @@ class OddWssServer:
 
         return result, res, res.header.task_id
 
+    def doCtrl(self, websocket, message):
+        # 解析json，若第一个消息不是json，则关闭连接
+        result = False
+        try:
+            req = json.loads(message)
+        except Exception as e:
+            logger.error(f"Invalid json format. Received message: {message}. webocket={websocket}")
+            message_id = ''
+            name = ''
+
+            res = TOddAsrApplyRes()
+            res.header.message_id = message_id
+            res.header.name = name
+            res.header.status = EM_ERR_ASR_ARGS_ERROR
+            res.header.status_text = mai_err_name(EM_ERR_ASR_ARGS_ERROR)
+
+            return result, res, ""
+
+        # 解析json中的session_id
+        name_value = req.get('name', '')
+        task_id = req.get('task_id', '')
+        message_id = req.get('message_id', '')
+
+        logger.warn(f"Received message: {message}, name={name_value}, task_id={task_id}, message_id={message_id}")
+
+        res = TOddAsrApplyRes()
+        res.header.message_id = message_id
+        res.header.task_id = task_id
+        res.header.name = name_value
+
+        # 若消息不是STOP_SESSION_REQ
+        if name_value != 'STOP_SESSION_REQ':
+            logger.error(f"Invalid name. Received message: {message}, req['name']={name_value}")
+            res.header.status = EM_ERR_ASR_ARGS_ERROR
+            res.header.status_text = mai_err_name(EM_ERR_ASR_ARGS_ERROR)
+
+            return result, res, res.header.task_id
+        
+        odd_asr_stream = find_odd_asr_stream_by_session_id(task_id=task_id)
+        if not odd_asr_stream:
+            logger.error(f"task_id={task_id} not found")
+            res.header.status = EM_ERR_ASR_SESSION_ID_NOVALID
+            res.header.status_text = mai_err_name(EM_ERR_ASR_SESSION_ID_NOVALID)
+            return result, res, res.header.task_id
+        else:
+            if task_id in self._sessionid_set:
+                self._sessionid_conn[task_id] = None
+
+            self._conn_sessionid[websocket] = None
+            res.header.status = 0
+            res.header.status_text = "Success"
+
+
+        result = True
+
+        return result, res, res.header.task_id
+
 
     async def send(self, websocket, message):
         await websocket.send(message)
@@ -327,8 +394,9 @@ def init_instances_stream(server: OddWssServer):
     :return:
     '''
     max_instance = config.odd_asr_cfg["asr_stream_cfg"]["max_instance"]
+
     if max_instance <= 0:
-        max_instance = 2
+        max_instance = 1
 
     for i in range(max_instance):
         odd_asr_stream_param: OddAsrParamsStream = OddAsrParamsStream(

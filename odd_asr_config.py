@@ -3,6 +3,7 @@ HOST = "127.0.0.1"
 PORT = 12345
 PORT = 7501
 PORT = 8701
+PORT = 9002
 
 ## WebSocket server binding IP & port
 WS_HOST = "127.0.0.1"
@@ -22,20 +23,44 @@ odd_asr_cfg = {
     "concurrent_thread": 0,
     ## asr stream config
     "asr_stream_cfg": {
-        'max_instance': 1, 
+        'max_instance': 0, 
+        'save_audio': False,
         'punct_mini_len': 10, 
-        'save_audio': True ,
+        'punct_time_mini_force_trigger': 3,
+        'free_resource_timeout': 5,         # auto free resource if N seconds without receiving audio
+        'force_final_result': 20,           # force final result after N seconds
         'vad_threshold': 0.8,               # vad_threshold
         'vad_min_speech_duration': 300,     # vad_min_speech_duration(ms)
         'vad_min_silence_duration': 200     # vad_min_silence_duration(ms)
         },
 
     ## asr file config
-    "asr_file_cfg": { 'max_instance':0 },
+    "asr_file_cfg": { 'max_instance':1, 'save_audio': False },
+    ## asr sentence config
+    "asr_sentence_cfg": {
+        'max_instance': 0, 
+        'save_audio': False,
+        'punct_mini_len': 10, 
+        'punct_time_mini_force_trigger': 3,
+        'free_resource_timeout': 5,         # auto free resource if N seconds without receiving audio
+        'force_final_result': 20,           # force final result after N seconds
+        'vad_threshold': 0.8,               # vad_threshold
+        'vad_min_speech_duration': 300,     # vad_min_speech_duration(ms)
+        'vad_min_silence_duration': 200     # vad_min_silence_duration(ms)
+        },
     ## HTTPS configuration
     "enable_https": False,
     "ssl_cert_path": "scripts/cert.pem",
     "ssl_key_path": "scripts/key.pem",
+}
+
+odd_asr_slp_cfg = {
+    "sensitive_words": {
+        "path": "scripts/sensitivewords",
+    }, 
+    "hotwords": {
+        "path": "scripts/hotwords",
+    }
 }
 
 db_cfg = {

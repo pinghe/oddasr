@@ -1,19 +1,48 @@
 from email.policy import default
 from sqlalchemy import Column, Integer, String
 from model.db import Base
+from enum import Enum
 
+class CMeetingStatus(str, Enum):
+    MEETING_STATUS_APPLY = -1
+    MEETING_STATUS_MINUTES = 0
+    MEETING_STATUS_ENCODE = 1
+    MEETING_STATUS_FINISH = 2
+    MEETING_STATUS_ERROR = 3
 
-MEETING_STATUS_APPLY = -1
-MEETING_STATUS_MINUTES = 0
-MEETING_STATUS_ENCODE = 1
-MEETING_STATUS_FINISH = 2
-MEETING_STATUS_ERROR = 3
+    def __int__(self):
+        match self.value:
+            case -1:
+                return "MEETING_STATUS_APPLY"
+            case 0:
+                return "MEETING_STATUS_MINUTES"
+            case 1:
+                return "MEETING_STATUS_ENCODE"
+            case 2:
+                return "MEETING_STATUS_FINISH"
+            case 3:
+                return "MEETING_STATUS_ERROR"
+            case _:
+                return "MEETING_STATUS_INIT"
 
+class CMeetingStatus2(str, Enum):
+    MEETING_OPEN_STATUS_INIT = 0
+    MEETING_OPEN_STATUS_ENCODE = 1
+    MEETING_OPEN_STATUS_FINISH = 2
+    MEETING_OPEN_STATUS_EXCEPTION = 3
 
-MEETING_OPEN_STATUS_INIT = 0
-MEETING_OPEN_STATUS_ENCODE = 1
-MEETING_OPEN_STATUS_FINISH = 2
-MEETING_OPEN_STATUS_EXCEPTION = 3
+    def __int__(self):
+        match self.value:
+            case 0:
+                return "MEETING_OPEN_STATUS_INIT"
+            case 1:
+                return "MEETING_OPEN_STATUS_ENCODE"
+            case 2:
+                return "MEETING_OPEN_STATUS_FINISH"
+            case 3:
+                return "MEETING_OPEN_STATUS_EXCEPTION"
+            case _:
+                return "MEETING_OPEN_STATUS_INIT"
 
 class CMeeting(Base):
     __tablename__ = 'oddasr_meeting'

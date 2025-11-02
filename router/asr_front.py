@@ -21,6 +21,10 @@ def asr_live():
 def asr_file():
     return render_template('asr_file.html', servercfg=config.asr)
 
+@bp.route('/asr_sentence.html')
+def asr_sentence():
+    return render_template('asr_sentence.html', servercfg=config.asr)
+
 @bp.route('/login', methods=['POST'])
 def login():
     try:
@@ -106,7 +110,7 @@ def hotwords():
     return render_template('hotwords.html', words=json.dumps(res))
 
 
-@bp.route('/hotwords_show.html')
+@bp.route('/settings_hotwords_show.html')
 @session_required
 def hotwords_show():
     result = []
@@ -127,7 +131,7 @@ def hotwords_show():
     #     result.append(test)
     res = {"list": result}
     print(json.dumps(res))
-    return render_template('hotwords_show.html', words_list=result)
+    return render_template('settings_hotwords_show.html', words_list=result)
 
 
 @bp.route('/sensiwords.html')
