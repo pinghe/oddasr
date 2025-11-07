@@ -161,7 +161,7 @@ class ScheduledTask(threading.Thread):
                         "text_ed_time": item["end"], 
                         "text_content": item["text"],
                         # "text_time": item["timestamp"],
-                        "text_term_alias": f"spk {item["spk"]}"
+                        "text_term_alias": f"spk {item.get('spk', 'unknown')}"
                     }  
             texts.append(text)
         return texts

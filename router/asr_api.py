@@ -17,7 +17,7 @@ from mutagen.mp3 import MP3
 # import app
 from log import logger
 from odd_asr_instance import find_free_odd_asr_file, find_free_odd_asr_sentence
-from scheduled_task import scheduled_task
+from scheduled_task import ScheduledTask
 from odd_asr_file import OddAsrFile
 from odd_asr_sentence import OddAsrSentence
 
@@ -134,39 +134,12 @@ def transcribe():
             logger.error(f"Failed to save audio file: {e}")
             return jsonify({"error": f"Failed to save audio file: {str(e)}"}), 500
 
-        # find a odd_asr_file instance
-        odd_asr_file: OddAsrFile = find_free_odd_asr_file()
-        
-        if not odd_asr_file:
-            # Clean up the temporary file
-            if os.path.exists(temp_path):
-                os.remove(temp_path)
-            return_ok = False
-            result = "no available asr instance."
-            return jsonify({"error": result}), 500
 
-        # recognition with hotwords
-        try:
-            match mode:
-                case "file":
-                    result = odd_asr_file.transcribe_file(audio_file=temp_path, hotwords=hotwords, output_format=output_format)
-                case _:
-                    return_ok = False
-                    result = f"unsupported mode: {mode}."
-        except Exception as e:
-            logger.error(f"ASR processing error: {e}")
-            result = f"ASR processing error: {str(e)}"
-            return_ok = False
-        finally:
-            # Delete the temporary file
-            if os.path.exists(temp_path):
-                try:
-                    os.remove(temp_path)
-                    logger.info(f"Deleted temporary file: {temp_path}")
-                except Exception as e:
-                    logger.warning(f"Failed to delete temporary file: {e}")
+        logger.info(f"mode:{mode}, fmt={output_format}...")
 
-        logger.info(f"Recognized mode:{mode}, fmt={output_format}, result: {result[:100]}...")
+        result = {
+
+        }
 
         # Return the recognition result
         if not return_ok:
@@ -190,12 +163,18 @@ def asr_recorder_delete_task():
 
 @bp.route('/v1/asr/task/create', methods=['POST'])
 def asr_task_create():
+    """
+    Receive an audio file from the client and return the transcribed text.
+    
+    """
     file = request.files.get('file')
     file_content = file.read()
     size = len(file_content)
+
     # check
     if size > 512 * 1024 * 1024:
         return {'error_code': -2, 'error_desc': 'file size > 512m', 'data': {'task_id': ""}}
+    
     hot_uid = ''
     sensitive_uid = ''
     if request.form.get('hot_uid', None):
@@ -253,9 +232,9 @@ def asr_task_create():
     if channel != 1:
         return {'error_code': -2, 'error_desc': '必须是单通道', 'data': {'task_id': ""}}
 
-    task_id = scheduled_task.start_task(priority, unique_id, file_path)
+    task_id = ScheduledTask.start_task(priority, unique_id, file_path)
     if task_id is not None:
-        scheduled_task.is_transmit = True
+        ScheduledTask.is_transmit = True
         return {'error_code': 0, 'error_desc': 'ok', 'data': {'task_id': task_id}}
     return {'error_code': -2, 'error_desc': 'create task fail', 'data': {'task_id': ""}}
 @bp.route('/v1/asr/task/status', methods=['POST'])
