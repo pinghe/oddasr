@@ -2,21 +2,8 @@ from sqlalchemy import or_, desc, func
 
 from log import logger
 from model.db import Session
-from model.meeting import CMeeting
-from model.meeting import MEETING_OPEN_STATUS_INIT, MEETING_OPEN_STATUS_ENCODE, MEETING_OPEN_STATUS_FINISH, \
-    MEETING_OPEN_STATUS_EXCEPTION
-from model.meeting import MEETING_STATUS_APPLY, MEETING_STATUS_ENCODE, MEETING_STATUS_FINISH, MEETING_STATUS_MINUTES
+from model.meeting import CMeeting, CMeetingStatus2
 from model.text import CText
-from sqlalchemy import or_, desc, func
-
-from log import logger
-from model.db import Session
-from model.meeting import CMeeting
-from model.meeting import MEETING_OPEN_STATUS_INIT, MEETING_OPEN_STATUS_ENCODE, MEETING_OPEN_STATUS_FINISH, \
-    MEETING_OPEN_STATUS_EXCEPTION
-from model.meeting import MEETING_STATUS_APPLY, MEETING_STATUS_ENCODE, MEETING_STATUS_FINISH, MEETING_STATUS_MINUTES
-from model.text import CText
-
 
 # apply res suc.
 class CStorageMinutes:
@@ -32,15 +19,13 @@ class CStorageMinutes:
             meeting.meeting_begin_time = strBeginTime
             meeting.meeting_alias = strMeetingAlias
             meeting.meeting_type = 2
-            meeting.meeting_status = MEETING_STATUS_APPLY
-            if bIsOpenMinutes:
-                meeting.meeting_status = MEETING_STATUS_MINUTES
+            meeting.meeting_status = CMeetingStatus2.MEETING_OPEN_STATUS_INIT
             session.add(meeting)
             session.commit()
             session.close()
         else:
-            if bIsOpenMinutes and meeting.meeting_status == MEETING_STATUS_APPLY:
-                meeting.meeting_status = MEETING_STATUS_MINUTES
+            if bIsOpenMinutes and meeting.meeting_status == CMeetingStatus2.MEETING_OPEN_STATUS_INIT:
+                meeting.meeting_status = CMeetingStatus2.MEETING_OPEN_STATUS_ENCODE
                 session.commit()
             session.close()
 
@@ -48,8 +33,8 @@ class CStorageMinutes:
     def openMeetingMinutes(self, strSessionId: str):
         session = Session()
         meeting = session.query(CMeeting).filter(CMeeting.session_id == strSessionId).first()
-        if meeting != None and meeting.meeting_status == MEETING_STATUS_APPLY:
-            meeting.meeting_status = MEETING_STATUS_MINUTES
+        if meeting != None and meeting.meeting_status == CMeetingStatus2.MEETING_OPEN_STATUS_ENCODE:
+            meeting.meeting_status = CMeetingStatus2.MEETING_OPEN_STATUS_ENCODE
             session.commit()
         session.close()
 
@@ -87,7 +72,8 @@ class CStorageMinutes:
 
     @classmethod
     def addMeetingText(self, strMoid: str, strTermE164: str,
-                       strTermAlias: str, nBg: int, nEd: int, strText: str, nFlag: int, nTime: int , nSign:int):
+                       strTermAlias: str, nBg: int, nEd: int, 
+                       strText: str, nFlag: int, nTime: int , nSign:int):
         session = Session()
         text = CText()
         text.session_id = strMoid
@@ -102,10 +88,11 @@ class CStorageMinutes:
         session.add(text)
         session.commit()
         session.close()
-
+    
     @classmethod
     def opMeetingText(self, strMoid: str,  strTermE164: str,
-                       strTermAlias: str, nBg: int, nEd: int, strText: str,  nTime: int , nMixBg:int , nMixEd:int):
+                       strTermAlias: str, nBg: int, nEd: int, 
+                       strText: str,  nTime: int , nMixBg:int , nMixEd:int):
         session = Session()
         session.query(CText).filter(CText.session_id == strMoid,
                                               CText.text_bg_time >= nMixBg, 
@@ -124,37 +111,7 @@ class CStorageMinutes:
         text.text_sign = 3
         session.add(text)
         session.commit()   
-        session.close()
-    
-    @classmethod
-    def addMeetingTextVad(self , strMoid: str,  strTermE164: str,
-                       strTermAlias: str, nBg: int, nEd: int, strText: str,  nTime: int , nTermTb:int , nTermTd:int , nSign:int):
-        session = Session()
-        text = CText()
-        text.session_id = strMoid
-        text.text_term_e164 = strTermE164
-        text.text_term_alias = strTermAlias
-        text.text_bg_time = nBg
-        text.text_ed_time = nEd
-        text.text_content = strText
-        text.text_time = nTime
-        text.text_flag = 0
-        text.text_sign = nSign
-        text.text_term_tb_time = nTermTb
-        text.text_term_td_time = nTermTd
-        session.add(text)
-        session.commit()   
-        session.close()               
-
-    @classmethod
-    def opMeetingFinish(self, strSessionId: str):
-        session = Session()
-        meeting = session.query(CMeeting).filter(CMeeting.session_id == strSessionId).first()
-        if meeting != None:
-            meeting.meeting_op_status = 1
-            session.commit()
-        session.close()
-   
+        session.close()   
 
     @classmethod
     def updateMeetingText(self, strId: str, strText: str):
@@ -163,26 +120,6 @@ class CStorageMinutes:
         meeting = session.query(CText).filter(CText.text_id == strId).first()
         if meeting != None:
             meeting.text_content = strText
-            session.commit()
-        session.close()
-
-    @classmethod
-    def updateMeetingEnd(self, strMoid: str, strEndTime: str):
-        session = Session()
-        meeting = session.query(CMeeting).filter(CMeeting.session_id == strMoid).first()
-        if meeting != None and meeting.meeting_status == MEETING_STATUS_MINUTES:
-            meeting.meeting_status = MEETING_STATUS_ENCODE
-            meeting.meeting_end_time = strEndTime
-            session.commit()
-        session.close()
-
-    @classmethod
-    def updateMeetingFinish(self, strMoid: str, strAudioResId: str):
-        session = Session()
-        meeting = session.query(CMeeting).filter(CMeeting.session_id == strMoid).first()
-        if meeting != None and meeting.meeting_status == MEETING_STATUS_ENCODE:
-            meeting.meeting_status = MEETING_STATUS_FINISH
-            meeting.meeting_audio_res_id = strAudioResId
             session.commit()
         session.close()
 
@@ -196,7 +133,7 @@ class CStorageMinutes:
     @classmethod
     def getUnEncodeMeetingMoids(self):
         session = Session()
-        moids = session.query(CMeeting.session_id).filter(CMeeting.meeting_status == MEETING_STATUS_ENCODE,
+        moids = session.query(CMeeting.session_id).filter(CMeeting.meeting_status == CMeetingStatus2.MEETING_OPEN_STATUS_ENCODE,
                                                             CMeeting.meeting_type == 2).all()
         session.close()
         return moids
@@ -271,70 +208,52 @@ class CStorageMinutes:
         meeting.meeting_alias = strMeetingName
         meeting.meeting_addr = strMeetingAddr
         meeting.meeting_type = 0
-        meeting.meeting_status = MEETING_OPEN_STATUS_INIT
+        meeting.meeting_status = CMeetingStatus2.MEETING_OPEN_STATUS_INIT
         session.add(meeting)
         session.commit()
         session.close()
         return True
 
     @classmethod
-    def updateOpenMeetingEnd(self, strSessionId: str, strEndTime: str):
+    def updateStatus(self, strSessionId: str, strEndTime: str, nStatus: int):
+        """
+        更新会议状态
+        :param strSessionId: 会议唯一标识
+        :param strEndTime: 结束时间
+        :param nStatus: 会议状态
+        :return: True/False
+        """
         session = Session()
         meeting = session.query(CMeeting).filter(CMeeting.session_id == strSessionId).first()
         if meeting == None:
             session.close()
             return False
 
-        meeting.meeting_status = MEETING_OPEN_STATUS_ENCODE
-        meeting.meeting_end_time = strEndTime
+        meeting.meeting_status = nStatus
+        if strEndTime != None:
+            meeting.meeting_end_time = strEndTime
         session.commit()
         session.close()
         return True
 
     @classmethod
-    def updateOpenMeetingFinish(self, strSessionId: str):
+    def addOpenFileMeeting(self, strSessionId: str, strRank: str, strUniqueId: str, strFileName: str, strBeginTime: str):
         session = Session()
+        strSessionId = str(strSessionId)
         meeting = session.query(CMeeting).filter(CMeeting.session_id == strSessionId).first()
-        if meeting == None:
-            session.close()
-            return False
-
-        meeting.meeting_status = MEETING_OPEN_STATUS_FINISH
-        session.commit()
-        session.close()
-
-    @classmethod
-    def addOpenFileMeeting(self, strUuid: str, strRank: str, strUniqueId: str, strFileName: str, strBeginTime: str):
-        session = Session()
-        strUuid = str(strUuid)
-        meeting = session.query(CMeeting).filter(CMeeting.session_id == strUuid).first()
         if meeting != None:
             session.close()
             return False
 
         meeting = CMeeting()
-        meeting.session_id = strUuid
+        meeting.session_id = strSessionId
         # meeting.meeting_e164 = strRank
         meeting.meeting_begin_time = strBeginTime
         meeting.meeting_alias = strFileName
         meeting.meeting_participant = strUniqueId
         meeting.meeting_type = 1
-        meeting.meeting_status = MEETING_OPEN_STATUS_INIT
+        meeting.meeting_status = CMeetingStatus2.MEETING_OPEN_STATUS_INIT
         session.add(meeting)
-        session.commit()
-        session.close()
-        return True
-
-    @classmethod
-    def updateOpenFileMeetingStart(self, strUuid: str, strAliTaskId: str):
-        session = Session()
-        meeting = session.query(CMeeting).filter(CMeeting.session_id == strUuid).first()
-        if meeting == None:
-            session.close()
-            return False
-
-        meeting.meeting_addr = strAliTaskId
-        meeting.meeting_status = MEETING_OPEN_STATUS_ENCODE
         session.commit()
         session.close()
         return True
@@ -343,14 +262,21 @@ class CStorageMinutes:
     # arrText:{'session_id':strUuid,'text_bg_time':,'text_ed_time':,'text_content':,}
     #
     @classmethod
-    def updateOpenFileMeetingEnd(self, strUuid: str, strEndTime: str, arrTexts: list):
-        
+    def updateOpenFileMeetingEnd(self, strSessionId: str, strEndTime: str, arrTexts: list):
+        """
+        更新打开文件会议结束时间
+        :param strSessionId: 会议唯一标识
+        :param strEndTime: 结束时间
+        :param arrTexts: 会议文本列表
+        :return:
+        """
+        logger.debug(f"updateOpenFileMeetingEnd strSessionId:{strSessionId} strEndTime:{strEndTime} arrTexts:{arrTexts}")
         session = Session()
-        meeting = session.query(CMeeting).filter(CMeeting.session_id == strUuid).first()
+        meeting = session.query(CMeeting).filter(CMeeting.session_id == strSessionId).first()
         if meeting == None:
             session.close()
             return False
-        meeting.meeting_status = MEETING_OPEN_STATUS_FINISH
+        meeting.meeting_status = CMeetingStatus2.MEETING_OPEN_STATUS_FINISH
         meeting.meeting_end_time = strEndTime
         if arrTexts != None and len(arrTexts) > 0:
             session.execute(CText.__table__.insert(), arrTexts)
@@ -359,23 +285,8 @@ class CStorageMinutes:
         return True
 
     @classmethod
-    def updateOpenFileMeetingException(self, strUuid: str, strEndTime: str):
-        session = Session()
-        meeting = session.query(CMeeting).filter(CMeeting.session_id == strUuid).first()
-        if meeting is None:
-            session.close()
-            return False
-        meeting.meeting_status = MEETING_OPEN_STATUS_EXCEPTION
-        meeting.meeting_end_time = strEndTime
-
-        session.execute(CText.__table__.insert(), [])
-        session.commit()
-        session.close()
-        return True
-
-    @classmethod
-    def getOpenFileMeetingInfo(self, strUuid: str):
-        meeting, count = self.getMeetingInfo(strUuid)
+    def getOpenFileMeetingInfo(self, strSessionId: str):
+        meeting, count = self.getMeetingInfo(strSessionId)
         if meeting != None:
             return {'uuid': meeting.session_id, 'aliTaskId': meeting.meeting_addr,
                     'uniqueId': meeting.meeting_participant, "status": meeting.meeting_status,
@@ -385,46 +296,22 @@ class CStorageMinutes:
         return None
 
     @classmethod
-    # by rank
     def getOpenFileMeetingInfoByPriority(self):
         session = Session()
         meeting = session.query(CMeeting).filter(CMeeting.meeting_type == 1,
-                                                 CMeeting.meeting_status == MEETING_OPEN_STATUS_INIT).order_by(
+                                                 CMeeting.meeting_status == CMeetingStatus2.MEETING_OPEN_STATUS_INIT).order_by(
             CMeeting.session_id.desc()).first()
         session.close()
         if meeting != None:
-            return {'uuid': meeting.session_id, 'aliTaskId': meeting.meeting_addr,
-                    'uniqueId': meeting.meeting_participant, "status": meeting.meeting_status,
+            return {'uuid': meeting.session_id, 
+                    'aliTaskId': meeting.meeting_addr,
+                    'uniqueId': meeting.meeting_participant, 
+                    "status": meeting.meeting_status,
                     'priority': '', # meeting.meeting_e164,
-                    'fileName': meeting.meeting_alias, 'begin_time': meeting.meeting_begin_time,
+                    'fileName': meeting.meeting_alias, 
+                    'begin_time': meeting.meeting_begin_time,
                     "end_time": meeting.meeting_end_time}
         return None
-
-    @classmethod
-    def getOpenFileMeetingInfoByEncoding(self):
-        session = Session()
-        meeting = session.query(CMeeting).filter(CMeeting.meeting_type == 1,
-                                                 CMeeting.meeting_status == MEETING_OPEN_STATUS_ENCODE).order_by(
-            CMeeting.session_id.desc()).first()
-        session.close()
-        if meeting != None:
-            return {'uuid': meeting.session_id, 'aliTaskId': meeting.meeting_addr,
-                    'uniqueId': meeting.meeting_participant, "status": meeting.meeting_status,
-                    'priority': '', # meeting.meeting_e164,
-                    'fileName': meeting.meeting_alias, 'begin_time': meeting.meeting_begin_time,
-                    "end_time": meeting.meeting_end_time}
-        return None
-
-    @classmethod
-    def updateOpenFileMeetingByRevert(self, strUuid: str):
-        session = Session()
-        meeting = session.query(CMeeting).filter(CMeeting.session_id == strUuid).first()
-        if meeting == None:
-            session.close()
-            return False
-        meeting.meeting_status = MEETING_OPEN_STATUS_INIT
-        session.commit()
-        return True
 
     @classmethod
     def deleteOpenFileMeeting(self, strUuid: str):

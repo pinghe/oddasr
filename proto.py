@@ -151,22 +151,41 @@ class TOddAsrPayloadReq:
         self.enable_ignore_sentence_timeout = enable_ignore_sentence_timeout
         self.enable_gender_detect = enable_gender_detect
 
+
+class TOddAsrWord:
+    '''
+    参数 类型 说明 
+    word        String 识别结果
+    begin_time  Integer 词的开始时间，单位是毫秒
+    end_time    Integer 词的结束时间，单位是毫秒
+    confidence  Double 词的置信度，取值范围[0.0, 1.0]，值越大表示置信度越高
+    '''
+    word = ""
+    begin_time = 0
+    end_time = 0
+    confidence = 1.0
+
+
 class TOddAsrPayloadRes:
     '''
     参数 类型 说明 
     index       Integer 句子编号，从 1 开始递增
     time        Integer 当前已处理的音频时长，单位是毫秒
-    begin_time  Integer 当前句子对应的 SentenceBegin 事件的时间，单位是毫秒
+    begin_time  Integer 当前句子句首对应的 SentenceBegin 事件的时间，单位是毫秒
+    end_time    Integer 当前句子句尾对应的 SentenceBegin 事件的时间，单位是毫秒
     result      String 当前的识别结果
     confidence  Double 当前句子识别结果的置信度，取值范围[0.0, 1.0]，值越大表示置信度越高    
     fin         Integer 句子是否结束，1 表示结束，0 表示未结束
+    words       List<TOddAsrWord> 句子的识别结果，每个元素包含词、开始时间、结束时间、置信度等信息
     '''
     index = 0
     time = 0
     begin_time = 0
+    end_time = 0
     result = ""
     confidence = 1.0
     fin = 1
+    words = []
 
 class TOddAsrApplyReq:
     '''

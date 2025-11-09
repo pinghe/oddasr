@@ -12,34 +12,9 @@ import os
 from datetime import timedelta
 import odd_asr_exceptions
 import odd_asr_config as config
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, make_response
 
 from log import logger
-from odd_asr import OddAsrFile, OddAsrParamsFile
-
-odd_asr_params_file = OddAsrParamsFile()
-odd_asr_file_set = set()
-
-def init_instance_file():
-    global odd_asr_file_set
-    for i in range(config.odd_asr_cfg["asr_file_cfg"]["max_instance"]):
-        odd_asr_file = OddAsrFile(odd_asr_params_file)
-        odd_asr_file_set.add(odd_asr_file)
-
-def find_free_odd_asr_file():
-    '''
-    find a free odd_asr_file
-    :param :
-    :return:
-    '''
-    global odd_asr_file_set
-    for odd_asr_file in odd_asr_file_set:
-        if not odd_asr_file.is_busy():
-            return odd_asr_file
-        
-    return None
-
-# odd_loop = EvLoop()
 
 # register blueprints
 def register_blueprints(new_app, path):
@@ -54,17 +29,13 @@ register_blueprints(app, 'router')
 app.config['SECRET_KEY'] = os.urandom(24)
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 
+# 添加全局缓存控制中间件
+@app.after_request
+def add_cache_control(response):
+    # 禁止浏览器缓存所有响应
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '-1'
+    return response
+
 import router.asr_api
-
-# for uwsgi start directly
-
-# if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
-#     logger.info('server has started!')
-#     odd_loop.start()
-#     odd_wssrv.start(config.ws_local_ip, config.ws_local_port)
-
-# logger.info('starting event loop !')
-# odd_loop.start()
-# logger.info('event loop has started!')
-# asyncio.run(odd_wssrv.start(config.ws_local_ip, config.ws_local_port))
-

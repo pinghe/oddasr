@@ -8,7 +8,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>OddAsr Slp service</title>
+    <title>OddAsr SLP service</title>
     <link rel="stylesheet" href="common/css/iconfont.css">
     <link rel="shortcut icon" href="images/favicon.ico" />
     <!-- Google Font: Source Sans Pro -->
@@ -73,33 +73,41 @@ scratch. This page gets rid of all links and provides the needed markup only.
                 <!-- Sidebar Menu -->
                 <nav class="mt-2">
                     <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
-
                         
                         <li class="nav-item menu-open">
                             <a href="#" class="nav-link active">
-                                <span class="myicon"></span>
+                                <i class="nav-icon fas fa-microphone"></i>
                                 <p>
                                     ASR service
                                     <i class="right fas fa-angle-left"></i>
                                 </p>
                             </a>
+
                             <ul class="nav nav-treeview active">
                                 <li class="nav-item">
                                     <a href="asr_live.html" class="nav-link active">
-                                        <i class="fa fa-file-main nav-icon active"></i>
+                                        <i class="fa fa-align-left fa-fw nav-icon active"></i>
                                         <p>Stream ASR</p>
                                     </a>
                                 </li>
 
                                 <li class="nav-item">
                                     <a href="asr_file.html" class="nav-link">
-                                        <i class="fa fa-file-main nav-icon"></i>
+                                        <i class="fa fa-align-justify nav-icon"></i>
                                         <p>File ASR</p>
                                     </a>
                                 </li>
+
+                                <li class="nav-item">
+                                    <a href="asr_sentence.html" class="nav-link">
+                                        <i class="fa fa-align-center nav-icon"></i>
+                                        <p>Sentence ASR</p>
+                                    </a>
+                                </li>
+
                                 <!-- <li class="nav-item" >
                                     <a href="minutes_list.html" class="nav-link active">
-                                        <i class="fa fa-file-main nav-icon"></i>
+                                        <i class="fa fa-clipboard nav-icon"></i>
                                         <p>数据管理</p>
                                     </a>
                                 </li> -->
@@ -107,59 +115,61 @@ scratch. This page gets rid of all links and provides the needed markup only.
                         </li>
 
                         <li class="nav-item">
+
                             <a href="#" class="nav-link">
-                                <i class="nav-icon fas fa-user"></i>
+                                <i class="nav-icon fas fa-user-cog"></i>
                                 <p>
                                     My SLP
                                     <i class="right fas fa-angle-left"></i>
                                 </p>
                             </a>
+
                             <ul class="nav nav-treeview">
                                 <li class="nav-item">
                                     <a href="slp_language_model.html" class="nav-link">
-                                        <i class="nav-icon fa fa-file-main"></i>
+                                        <i class="nav-icon fa fa-address-book"></i>
                                         <p>Language model</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
                                     <a href="slp_acoustic_model.html" class="nav-link">
-                                        <i class="nav-icon fa fa-file-main"></i>
+                                        <i class="nav-icon fa fa-wave-square"></i>
                                         <p>Acoustic model</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
                                     <a href="slp_textual_substitution.html" class="nav-link">
-                                        <i class="nav-icon fa fa-file-main"></i>
+                                        <i class="nav-icon fa fa-audio-description"></i>
                                         <p>Textual Substitution</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
                                     <a href="hotwords.html" class="nav-link">
-                                        <i class="fa fa-setting-hotwords nav-icon"></i>
+                                        <i class="fa fa-binoculars nav-icon"></i>
                                         <p>Hotwords</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="hotwords_show.html" class="nav-link">
-                                        <i class="fa fa-setting-hotwords nav-icon"></i>
+                                    <a href="settings_hotwords_show.html" class="nav-link">
+                                        <i class="fa fa-bookmark nav-icon"></i>
                                         <p>Hotwords list</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
                                     <a href="sensiwords.html" class="nav-link">
-                                        <i class="fa fa-setting-sensitivewords nav-icon"></i>
+                                        <i class="fa fa-briefcase nav-icon"></i>
                                         <p>Sensitive Words</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
                                     <a href="sensiwords_show.html" class="nav-link">
-                                        <i class="fa fa-setting-sensitivewords nav-icon"></i>
+                                        <i class="fa fa-bullseye nav-icon"></i>
                                         <p>Sensi-words list</p>
                                     </a>
                                 </li>
                                 <li class="nav-item">
                                     <a href="dialectmodal.html" class="nav-link">
-                                        <i class="fa fa-setting-dialectmodal nav-icon"></i>
+                                        <i class="fa fa-certificate nav-icon"></i>
                                         <p>Dialect Model</p>
                                     </a>
                                 </li>
@@ -168,7 +178,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
                             </ul>
                         </li>
 
-                        <li class="nav-item ">
+                        <li class="nav-item">
                             <a href="#" class="nav-link">
                                 <i class="nav-icon fas fa-user"></i>
                                 <p>
@@ -179,16 +189,16 @@ scratch. This page gets rid of all links and provides the needed markup only.
                             <ul class="nav nav-treeview">
                                 <li class="nav-item">
                                     <a href="user_pwd.html" class="nav-link">
-                                        <i class="nav-icon fa fa-file-main"></i>
+                                        <i class="nav-icon fa fa-key"></i>
                                         <p>Modify Password</p>
                                     </a>
                                 </li>
                             </ul>
                         </li>
 
-                        <li class="nav-item ">
+                        <li class="nav-item">
                             <a href="#" class="nav-link ">
-                                <i class="nav-icon fas fa-adjust"></i>
+                                <i class="nav-icon fas fa-sliders-h"></i>
                                 <p>
                                     Settings
                                     <i class="right fas fa-angle-left"></i>
@@ -197,7 +207,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
                             <ul class="nav nav-treeview">
                                 <li class="nav-item">
                                     <a href="settings_others.html" class="nav-link">
-                                        <i class="fa fa-file-prescription nav-icon"></i>
+                                        <i class="fa fa-bars nav-icon"></i>
                                         <p>Basic Settings</p>
                                     </a>
                                 </li>

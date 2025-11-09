@@ -30,7 +30,7 @@ def check_user(user,pwd):
 def modify_user(user,oldpwd,newpwd):
     if g_data['user'] != user or g_data['pwd'] != oldpwd:
         return False
-    else:  
+    else:
         g_data['user'] = user
         g_data['pwd'] = newpwd
         _save(config.Users)

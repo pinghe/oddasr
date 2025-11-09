@@ -13,9 +13,18 @@ from model import db
 from model import sensitiveword as sw
 
 class SensitiveWordManage(object):
+    """
+    敏感词管理类
+    """
 
     @classmethod
     def set_sensitive_word(cls, unique_id, sensitive_word):
+        """
+        设置敏感词
+        :param unique_id: 唯一标识
+        :param sensitive_word: 敏感词列表
+        :return:
+        """
         db_session = db.Session()
 
         sensitive_word_m = db_session.query(sw.CSensitiveWord).filter(sw.CSensitiveWord.unique_id == unique_id).first()
@@ -35,6 +44,11 @@ class SensitiveWordManage(object):
 
     @classmethod
     def get_sensitive_word(cls, unique_id):
+        """
+        获取敏感词
+        :param unique_id: 唯一标识
+        :return:
+        """
         logger.info(f"get_sensitive_word{unique_id}")
         db_session = db.Session()
         sensitive_word_m = db_session.query(sw.CSensitiveWord).filter(sw.CSensitiveWord.unique_id == unique_id).first()
@@ -47,6 +61,11 @@ class SensitiveWordManage(object):
 
     @classmethod
     def del_sensitive_word(cls, unique_id):
+        """
+        删除敏感词
+        :param unique_id: 唯一标识
+        :return:
+        """
         db_session = db.Session()
         sensitive_word_m = db_session.query(sw.CSensitiveWord).filter(sw.CSensitiveWord.unique_id == unique_id).first()
         if not sensitive_word_m:

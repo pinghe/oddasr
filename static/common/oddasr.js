@@ -536,10 +536,12 @@ class ODDASRCli
     stop()
     {
         oddasr_log('ODDASRCli.stop');
+        if (this.ws && this.state == ASR_CLIENT_SESSION_ESTABLISHED) {
+            let stop = {'service_type':'ASR','msg_type':'STOP_SESSION_REQ'};
+            let msg = JSON.stringify(stop);
+            this.ws.send(msg);
+        }
         this.state = ASR_CLIENT_SESSION_STOPING;
-        let stop = {'service_type':'ASR','msg_type':'STOP_SESSION_REQ'};
-        let msg = JSON.stringify(stop);
-        this.ws.send(msg);
         return CODE.ASR_ERROR_NONE;
     }
 
@@ -559,15 +561,17 @@ class ODDASRCli
         if(channelCount != 1 ||
             (sampleRate != 16000 && sampleRate != 32000 && sampleRate != 48000) ||
             bitWidth != 16)
-        {    
-            oddasr_log('ODDASRCli.feed arg error')
+        {
+            oddasr_log('ODDASRCli.feed arg error');
             return CODE.ASR_ERROR_ARGS;
         }
 
         if(this.state != ASR_CLIENT_SESSION_ESTABLISHED)
-        {   
+        {
             oddasr_log('ODDASRCli.feed state error');
-            return CODE.ASR_ERROR_STATE;
+            // 暂时返回成功，避免采集快于跟后端处理数据
+            // return CODE.ASR_ERROR_STATE;
+            return CODE.ASR_ERROR_NONE;
         }
         this.ws.send(data);
         return CODE.ASR_ERROR_NONE;

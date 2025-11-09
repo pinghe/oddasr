@@ -52,10 +52,8 @@ def from_data(data):
 
 
 class OddAsrStreamResult:
-    # punc_model: AutoModel = None
 
-    def __init__(self, punc_model, webocket, text, index=0, begin_time=0, is_final=False, is_last=False):
-        self.punc_model = punc_model
+    def __init__(self, webocket, text, index=0, begin_time=0, end_time=0, is_final=False, is_last=False, words=[]):
         self.webocket = webocket
         self.res = proto.TOddAsrTranscribeRes()
         
@@ -68,8 +66,10 @@ class OddAsrStreamResult:
 
         self.res.payload.result = text
         self.res.payload.begin_time = begin_time
+        self.res.payload.end_time = end_time
         self.res.payload.index = index
         self.res.payload.fin = 1 if is_last else 0
+        self.res.payload.words = words
 
 def enque_asr_result(message: OddAsrStreamResult):
     global asr_result_queue
@@ -86,12 +86,6 @@ async def notify_task(_wss_server=None):
                 # print(f"queue size={asr_result_queue.qsize()}")
                 message:OddAsrStreamResult = asr_result_queue.get()
                 # print(f"notifyTask: {message.text}")
-
-                # if message.punc_model:
-                #     message.res.payload.result = message.res.payload.result.replace(" ", "")
-                #     message.res.payload.fin = 1
-                # else:
-                #     message.res.payload.fin = 1
 
                 if _wss_server:
                     if message.webocket in _wss_server._clients_set:
