@@ -90,3 +90,7 @@ log_level = 10 # 10-debug 20-info 30-warn 40-error 50-crit
 ## token authertication config
 asr={'liveasr':'', 'appid':'oddasrtest', 'secret':'oddasrtest'}
 Users = 'oddasr_users.json'
+
+## OpenAI 兼容 API Key 配置
+## 空字符串表示不鉴权，字符串表示单个 key，列表表示多个 key
+openai_api_key = ""
