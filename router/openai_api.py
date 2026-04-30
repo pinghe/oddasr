@@ -12,12 +12,12 @@ import time
 import functools
 import tempfile
 
-import librosa
+import soundfile as sf
 
 from flask import Blueprint, request, jsonify
 
 from log import logger
-from odd_asr_instance import find_free_odd_asr_sentence
+from odd_asr_instance import find_free_odd_asr_sentence, release_odd_asr_sentence
 import odd_asr_config as config
 
 bp = Blueprint('openai_asr', __name__, url_prefix='')
@@ -62,7 +62,7 @@ def openai_auth_required(f):
     return decorated_function
 
 
-@bp.route('/audio/transcriptions', methods=['POST'])
+@bp.route('/v1/audio/transcriptions', methods=['POST'])
 @openai_auth_required
 def transcribe():
     """
@@ -130,12 +130,12 @@ def transcribe():
                 output_format="txt"
             )
 
-            # 计算音频时长
+            # 计算音频时长（仅读 metadata，不解码音频数据）
             duration = 0.0
             try:
-                audio_data, sr = librosa.load(temp_path, sr=None, mono=True)
-                duration = len(audio_data) / sr
-            except:
+                info = sf.info(temp_path)
+                duration = info.duration
+            except Exception:
                 pass
 
             response = {
@@ -157,6 +157,7 @@ def transcribe():
                 }
             }), 500
         finally:
+            release_odd_asr_sentence(odd_asr_sentence)
             if os.path.exists(temp_path):
                 try:
                     os.remove(temp_path)

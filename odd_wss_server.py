@@ -25,6 +25,7 @@ import torchaudio
 
 from odd_asr_stream import OddAsrStream, OddAsrParamsStream
 from odd_asr_result import notifyTask, set_openai_result_callback
+from odd_asr_instance import InstancePool
 import odd_asr_config as config
 from log import logger
 from odd_asr_exceptions import *
@@ -40,7 +41,7 @@ server --> client: ASRResult
 '''
 
 
-odd_asr_stream_set = set()
+odd_asr_stream_pool = InstancePool()
 _wss_server = None
 
 # ============================================================
@@ -137,19 +138,17 @@ async def _openai_result_handler(message, wss_server):
 
 def find_free_odd_asr_stream(websocket, task_id):
     '''
-    找到一个空闲的odd_asr_stream
+    从实例池获取一个空闲的odd_asr_stream
     :param websocket:
+    :param task_id:
     :return:
     '''
-    for odd_asr_stream in odd_asr_stream_set:
-        if not odd_asr_stream.is_busy():
-            odd_asr_stream.set_busy(True)
-            odd_asr_stream.set_session_id(task_id)
-            odd_asr_stream.set_websocket(websocket)
-
-            return odd_asr_stream
-        
-    return None
+    stream = odd_asr_stream_pool.acquire()
+    if stream:
+        stream.set_busy(True)
+        stream.set_session_id(task_id)
+        stream.set_websocket(websocket)
+    return stream
 
 def find_odd_asr_stream_by_websocket(websocket):
     '''
@@ -157,21 +156,20 @@ def find_odd_asr_stream_by_websocket(websocket):
     :param websocket:
     :return:
     '''
-    for odd_asr_stream in odd_asr_stream_set:
-        if odd_asr_stream.get_websocket() == websocket:
-            return odd_asr_stream
-        
-    return None
+    return odd_asr_stream_pool.find_by_websocket(
+        lambda s: s.get_websocket(), websocket
+    )
 
 def free_odd_asr_stream(odd_asr_stream):
     '''
-    释放一个odd_asr_stream
+    释放一个odd_asr_stream回实例池
     :param odd_asr_stream:
     :return:
     '''
     odd_asr_stream.set_busy(False)
     odd_asr_stream.set_session_id(None)
     odd_asr_stream.set_websocket(None)
+    odd_asr_stream_pool.release(odd_asr_stream)
 
 def find_odd_asr_stream_by_session_id(task_id):
     '''
@@ -179,10 +177,9 @@ def find_odd_asr_stream_by_session_id(task_id):
     :param task_id:
     :return:
     '''
-    for odd_asr_stream in odd_asr_stream_set:
-        if odd_asr_stream.get_session_id() == task_id:
-            return odd_asr_stream
-    return None
+    return odd_asr_stream_pool.find_by_session_id(
+        lambda s: s.get_session_id(), task_id
+    )
 
 class OddWssServer:
     def __init__(self):
@@ -458,9 +455,7 @@ class OddWssServer:
             # logger.warn(f"remove task_id={task_id}, client={websocket}, odd_asr_stream={odd_asr_stream}")
 
             if odd_asr_stream:
-                odd_asr_stream.set_websocket(None)
-                odd_asr_stream.set_busy(False)
-                # odd_asr_stream.set_session_id('')
+                free_odd_asr_stream(odd_asr_stream)
 
             logger.warn(f"remove task_id={task_id}, client={websocket}")
         else:
@@ -646,12 +641,11 @@ def init_instances_stream(server: OddWssServer):
     for i in range(max_instance):
         odd_asr_stream_param: OddAsrParamsStream = OddAsrParamsStream(
             mode="stream",
-            hotwords="", 
+            hotwords="",
             audio_rec_filename="",
-            # result_callback=server.doSend,
         )
         odd_asr_stream = OddAsrStream(odd_asr_stream_param)
-        odd_asr_stream_set.add(odd_asr_stream)
+        odd_asr_stream_pool.add(odd_asr_stream)
 
 def init_notify_task(server: OddWssServer):
     '''
